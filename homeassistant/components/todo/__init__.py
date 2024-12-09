@@ -6,8 +6,8 @@ from collections.abc import Callable, Iterable
 import dataclasses
 import datetime
 import logging
-from typing import Any, final
 from types import MappingProxyType
+from typing import Any, final
 
 from propcache import cached_property
 import voluptuous as vol
