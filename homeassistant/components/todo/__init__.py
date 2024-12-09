@@ -7,11 +7,13 @@ import dataclasses
 import datetime
 import logging
 from typing import Any, final
+from types import MappingProxyType
 
 from propcache import cached_property
 import voluptuous as vol
 
 from homeassistant.components import frontend, websocket_api
+from homeassistant.components.calendar import CalendarEntity
 from homeassistant.components.websocket_api import ERR_NOT_FOUND, ERR_NOT_SUPPORTED
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ENTITY_ID, EVENT_COMPONENT_LOADED
@@ -149,8 +151,38 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             if entity is not None and isinstance(entity, TodoListEntity)
         ]
         entities = [entity for entity in entities if isinstance(entity, TodoListEntity)]
+        print(entities)
+        local_cal_component = hass.data["local_calendar"]
+        print(local_cal_component)
         for entity in entities:
-            entity.async_subscribe_updates(lambda x: print(x))
+            entry_data = {
+                "calendar_name": entity.name,
+                "storage_key": cv.slugify(entity.name),
+            }
+            entry = ConfigEntry(
+                discovery_keys=MappingProxyType({}),
+                version=1,
+                minor_version=1,
+                domain="local_calendar",
+                title=entity.name,
+                data=entry_data,
+                source="user",
+                options=MappingProxyType({}),
+                unique_id=entity.entity_id + "-cal",
+            )
+
+            # await local_cal_component.async_add_config_entry(entry)
+        # await hass.config_entries.async_add(entry)
+        # path = Path(
+        #     hass.config.path(
+        #         f"storage/local_calendar_{entry_data['storage_key']}.ics"
+        #     )
+        # )
+        # store = LocalCalendarStore(hass, path)
+
+        # for entity in entities:
+        # entity.async_subscribe_updates(lambda x: print(x))
+        # hass.bus.fire()
 
     hass.bus.async_listen(EVENT_COMPONENT_LOADED, _handle_component_loaded)
 
