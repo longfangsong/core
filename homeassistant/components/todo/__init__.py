@@ -14,7 +14,7 @@ import voluptuous as vol
 from homeassistant.components import frontend, websocket_api
 from homeassistant.components.websocket_api import ERR_NOT_FOUND, ERR_NOT_SUPPORTED
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ENTITY_ID
+from homeassistant.const import CONF_ENTITY_ID, EVENT_COMPONENT_LOADED
 from homeassistant.core import (
     CALLBACK_TYPE,
     HomeAssistant,
@@ -130,6 +130,29 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     websocket_api.async_register_command(hass, websocket_handle_subscribe_todo_items)
     websocket_api.async_register_command(hass, websocket_handle_todo_item_list)
     websocket_api.async_register_command(hass, websocket_handle_todo_item_move)
+
+    async def _handle_component_loaded(event):
+        from homeassistant.helpers import entity_registry as er
+
+        component = event.data.get("component")
+        entries = hass.config_entries.async_entries(component)
+        entity_reg = er.async_get(hass)
+        todo_component = hass.data["todo"]
+        entities = [
+            todo_component.get_entity(entity.entity_id)
+            for entry in entries
+            for entity in er.async_entries_for_config_entry(entity_reg, entry.entry_id)
+        ]
+        entities = [
+            entity
+            for entity in entities
+            if entity is not None and isinstance(entity, TodoListEntity)
+        ]
+        entities = [entity for entity in entities if isinstance(entity, TodoListEntity)]
+        for entity in entities:
+            entity.async_subscribe_updates(lambda x: print(x))
+
+    hass.bus.async_listen(EVENT_COMPONENT_LOADED, _handle_component_loaded)
 
     component.async_register_entity_service(
         TodoServices.REMOVE_LIST,
